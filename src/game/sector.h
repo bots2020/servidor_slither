@@ -19,16 +19,16 @@ typedef std::vector<Sector *>::iterator SectorIter;
 typedef std::vector<BoundBox *> BoundBoxVec;
 
 struct BoundBoxPos {
-  float x;
-  float y;
-  float r;
+  float x; // Coordenada X do centro do bounding circle.
+  float y; // Coordenada Y do centro do bounding circle.
+  float r; // Raio do bounding circle (usado para interseção).
 
-  BoundBoxPos() = default;
-  BoundBoxPos(const BoundBoxPos &p) : x(p.x), y(p.y), r(p.r) {}
-  BoundBoxPos(float in_x, float in_y, float in_r) : x(in_x), y(in_y), r(in_r) {}
+  BoundBoxPos() = default; // Construtor padrão (deixa membros sem inicializar explicitamente).
+  BoundBoxPos(const BoundBoxPos &p) : x(p.x), y(p.y), r(p.r) {} // Copia x/y/r do outro objeto.
+  BoundBoxPos(float in_x, float in_y, float in_r) : x(in_x), y(in_y), r(in_r) {} // Inicializa x/y/r com valores passados.
 
   // Fix: Explicitly default the assignment operator to resolve deprecation error
-  BoundBoxPos& operator=(const BoundBoxPos&) = default;
+  BoundBoxPos& operator=(const BoundBoxPos&) = default; // Atribuição padrão para copiar x/y/r.
 
   inline bool Intersect(const BoundBoxPos &bb2) const {
     return Math::intersect_circle(x, y, bb2.x, bb2.y, r + bb2.r);

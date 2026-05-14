@@ -15,36 +15,37 @@ RELATIVE PATH: game/world.cc
 #include "game/bot_names.h" 
 
 // --- NEW: Safety Check Implementation ---
-bool World::IsLocationSafe(float x, float y, float safety_radius) {
-    int16_t sx = static_cast<int16_t>(x / WorldConfig::sector_size);
-    int16_t sy = static_cast<int16_t>(y / WorldConfig::sector_size);
+bool World::IsLocationSafe(float x, float y, float safety_radius) { // Decide se uma posição inicial é segura (sem colisão com outras cobras).
+    int16_t sx = static_cast<int16_t>(x / WorldConfig::sector_size); // Coordenada X do setor calculada a partir da posição do mundo.
+    int16_t sy = static_cast<int16_t>(y / WorldConfig::sector_size); // Coordenada Y do setor calculada a partir da posição do mundo.
     
-    float safe_sq = safety_radius * safety_radius;
+    float safe_sq = safety_radius * safety_radius; // Raio de segurança ao quadrado (evita sqrt em distâncias).
 
     // Check 3x3 sectors around the spawn point
-    for (int j = sy - 1; j <= sy + 1; j++) {
-        for (int i = sx - 1; i <= sx + 1; i++) {
+    for (int j = sy - 1; j <= sy + 1; j++) { // Varre setores próximos no eixo Y.
+        for (int i = sx - 1; i <= sx + 1; i++) { // Varre setores próximos no eixo X.
             // Boundary checks for sectors
             if (i < 0 || i >= WorldConfig::sector_count_along_edge || 
-                j < 0 || j >= WorldConfig::sector_count_along_edge) continue;
+                j < 0 || j >= WorldConfig::sector_count_along_edge) continue; // Ignora setores fora do grid válido.
 
-            Sector *sec = sectors.get_sector(i, j);
+            Sector *sec = sectors.get_sector(i, j); // Obtém o setor (grid) correspondente para procurar colisões.
 
             // Iterate over all snakes currently in this sector
-            for (const BoundBox *bb : sec->snakes) {
-                const Snake *other = bb->snake;
+            for (const BoundBox *bb : sec->snakes) { // Percorre todas as bounding boxes (cobras) registradas nesse setor.
+                const Snake *other = bb->snake; // Ponteiro para a “outra” cobra candidata à colisão.
                 
                 // Check distance to the other snake's head
-                if (Math::dist_sq(x, y, other->get_head_x(), other->get_head_y()) < safe_sq) {
-                    return false; // Too close!
+                if (Math::dist_sq(x, y, other->get_head_x(), other->get_head_y()) < safe_sq) { // Se a distância do ponto até a cabeça for menor que o raio seguro.
+                    return false; // Retorna “não seguro” (posição está colidindo/contígua demais).
                 }
 
                 // Optional: Check distance to *any* body part if you want to be super safe
                 // but checking the head is usually sufficient for spawning.
-            }
-        }
-    }
-    return true;
+            } // Fim das entidades do setor.
+        } // Fim do varrimento do eixo X.
+    } // Fim do varrimento do eixo Y.
+
+    return true; // Nenhuma cobra violou o raio de segurança: posição segura.
 }
 
 Snake::Ptr World::CreateSnake(int start_len) {
@@ -84,6 +85,17 @@ Snake::Ptr World::CreateSnake(int start_len) {
       float fy = WorldConfig::game_radius + dist * sinf(angle);
       
       if (IsLocationSafe(fx, fy, safety_buffer)) {
+          // Battledome: proibido spawnar dentro do círculo verde.
+          // Centro do mapa no sistema do servidor: (game_radius, game_radius)
+          const float cx = static_cast<float>(WorldConfig::game_radius);
+          const float cy = static_cast<float>(WorldConfig::game_radius);
+          const float br = static_cast<float>(WorldConfig::battledome_radius);
+
+          if (Math::dist_sq(fx, fy, cx, cy) < br * br) {
+            attempts++;
+            continue;
+          }
+
           x = static_cast<uint16_t>(fx);
           y = static_cast<uint16_t>(fy);
           safe = true;

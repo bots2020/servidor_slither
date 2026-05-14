@@ -59,9 +59,9 @@ class Snake : public std::enable_shared_from_this<Snake> {
   bool acceleration;
   bool bot;
 
-  // --- NEW FLAG ---
-  bool newly_spawned = true; 
-  // ----------------
+  // Flag: cobra já entrou no battledome pelo menos uma vez.
+  // Usada para “entrar e tentar sair => morte”.
+  bool in_battledome = false; // Estado persistente durante a vida.
 
   std::string name;
   std::string custom_skin_data;
@@ -131,8 +131,12 @@ class Snake : public std::enable_shared_from_this<Snake> {
   static const int parts_skip_count = 3;
   static const int parts_start_move_count = 4;
   static constexpr float tail_step_distance = 24.0f;
-  static constexpr float rot_step_angle = 1.0f * WorldConfig::move_step_distance / boost_speed * snake_angular_speed; 
-  static const long rot_step_interval = static_cast<long>(1000.0f * rot_step_angle / snake_angular_speed);
+  // Ângulo por “step” de rotação (equilíbrio com a velocidade e boost).
+  static constexpr float rot_step_angle =
+      1.0f * WorldConfig::move_step_distance / boost_speed * snake_angular_speed;
+  // Intervalo em ms para aplicar um step de rotação.
+  static const long rot_step_interval =
+      static_cast<long>(1000.0f * rot_step_angle / snake_angular_speed);
   static const long ai_step_interval = 250; 
 
  private:

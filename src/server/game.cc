@@ -19,34 +19,34 @@
 #define COLOR_BOLD    "\033[1m"
 
 // Helper function to convert packet data to hex string
-static std::string to_hex(const std::string& data, size_t max_bytes = 64) {
-  std::stringstream ss;
-  size_t len = std::min(data.size(), max_bytes);
-  for (size_t i = 0; i < len; ++i) {
-    ss << std::hex << std::setfill('0') << std::setw(2) 
-       << (int)(unsigned char)data[i] << " ";
-    if ((i + 1) % 16 == 0) ss << "\n                ";
+static std::string to_hex(const std::string& data, size_t max_bytes = 64) { // Converte bytes do pacote em string hexadecimal (para debug).
+  std::stringstream ss; // Stream que acumula a saída formatada.
+  size_t len = std::min(data.size(), max_bytes); // Limita quantos bytes serão mostrados.
+  for (size_t i = 0; i < len; ++i) { // Itera pelos bytes selecionados.
+    ss << std::hex << std::setfill('0') << std::setw(2) // Formatação para 2 dígitos hex.
+       << (int)(unsigned char)data[i] << " "; // Converte byte para inteiro sem sinal e escreve.
+    if ((i + 1) % 16 == 0) ss << "\n                "; // Quebra linha a cada 16 bytes para legibilidade.
   }
-  if (data.size() > max_bytes) ss << "...";
-  return ss.str();
+  if (data.size() > max_bytes) ss << "..."; // Indica que houve truncamento.
+  return ss.str(); // Retorna a string final hex.
 }
 
-GameServer::GameServer() {
+GameServer::GameServer() { // Construtor: configura endpoint websocket e registra handlers.
   // set up access channels to only log interesting things
-  endpoint.clear_access_channels(alevel::all);
-  endpoint.set_access_channels(alevel::access_core);
-  endpoint.set_access_channels(alevel::app);
+  endpoint.clear_access_channels(alevel::all); // Limpa canais de log anteriores.
+  endpoint.set_access_channels(alevel::access_core); // Habilita log “core” do websocket.
+  endpoint.set_access_channels(alevel::app); // Habilita log da aplicação (uso/erros/estado).
 
   // Initialize the Asio transport policy
-  endpoint.init_asio();
-  endpoint.set_reuse_addr(true);
+  endpoint.init_asio(); // Inicializa o transporte ASIO.
+  endpoint.set_reuse_addr(true); // Permite reutilizar endereço/porta em reinícios.
 
   // Bind the handlers we are using
-  endpoint.set_socket_init_handler(bind(&GameServer::on_socket_init, this, ::_1, ::_2));
+  endpoint.set_socket_init_handler(bind(&GameServer::on_socket_init, this, ::_1, ::_2)); // Registra handler para inicializar socket.
 
-  endpoint.set_open_handler(bind(&GameServer::on_open, this, _1));
-  endpoint.set_message_handler(bind(&GameServer::on_message, this, _1, _2));
-  endpoint.set_close_handler(bind(&GameServer::on_close, this, _1));
+  endpoint.set_open_handler(bind(&GameServer::on_open, this, _1)); // Handler ao abrir conexão.
+  endpoint.set_message_handler(bind(&GameServer::on_message, this, _1, _2)); // Handler ao receber mensagem.
+  endpoint.set_close_handler(bind(&GameServer::on_close, this, _1)); // Handler ao fechar conexão.
 }
 
 int GameServer::Run(IncomingConfig in_config) {
@@ -155,11 +155,21 @@ void GameServer::on_timer(error_code const &ec) {
 }
 
 void GameServer::BroadcastDebug() {
-  if (!config.debug) {
-    return;
-  }
-
   packet_debug_draw draw;
+
+  // O círculo do battledome precisa aparecer sempre (define a regra de morte ao sair).
+
+  // Battledome (anel verde no centro) — desenha mesmo que nenhum snake tenha mudado.
+  // Isso ajuda a client-side map overlay a “aparecer” com o mesmo raio do servidor.
+  {
+    const uint16_t sis = 60000; // Separador numérico para debug circles (evita colisão com ids do snake).
+    draw.circles.push_back(
+        d_draw_circle{sis,
+                      {static_cast<float>(WorldConfig::game_radius),
+                       static_cast<float>(WorldConfig::game_radius)},
+                      static_cast<float>(WorldConfig::battledome_radius),
+                      0x00ff00});
+  }
 
   for (Snake *s : world.GetChangedSnakes()) {
     uint16_t sis = static_cast<uint16_t>(s->id * 1000);

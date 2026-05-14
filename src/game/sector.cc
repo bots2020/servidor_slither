@@ -3,30 +3,30 @@
 #include <algorithm>
 
 void BoundBox::Insert(Sector *s) {
-  auto fwd_i = std::lower_bound(sectors.begin(), sectors.end(), s);
-  if (fwd_i != sectors.end()) {
-    sectors.insert(fwd_i, s);
-  } else {
-    sectors.push_back(s);
+  auto fwd_i = std::lower_bound(sectors.begin(), sectors.end(), s); // Encontra posição ordenada para inserir o setor.
+  if (fwd_i != sectors.end()) { // Verifica se encontrou uma posição válida dentro do range.
+    sectors.insert(fwd_i, s); // Insere o ponteiro do setor na posição correta mantendo ordenação.
+  } else { // Caso não exista posição dentro do range (deve ser no final).
+    sectors.push_back(s); // Adiciona o ponteiro do setor no fim do vetor.
   }
 }
 
 bool BoundBox::RemoveUnsorted(const SectorIter &i) {
-  if (i + 1 != sectors.end()) {
-    *i = sectors.back();
-    sectors.pop_back();
-    return true;
-  } else {
-    sectors.pop_back();
-    return false;
+  if (i + 1 != sectors.end()) { // Se o elemento removido não é o último.
+    *i = sectors.back(); // Substitui pelo último elemento para remover sem manter ordenação.
+    sectors.pop_back(); // Remove o último elemento agora duplicado.
+    return true; // Indica que houve troca (vetor mudou mantendo ordem irrelevante).
+  } else { // Se o elemento removido é o último.
+    sectors.pop_back(); // Remove o último elemento.
+    return false; // Indica que não houve troca (apenas remoção do final).
   }
 }
 
 bool BoundBox::IsPresent(const Sector *s) {
-  return std::binary_search(sectors.begin(), sectors.end(), s);
+  return std::binary_search(sectors.begin(), sectors.end(), s); // Busca binária assumindo vetor ordenado.
 }
 
-void BoundBox::Sort() { std::sort(sectors.begin(), sectors.end()); }
+void BoundBox::Sort() { std::sort(sectors.begin(), sectors.end()); } // Ordena os ponteiros dos setores para permitir busca binária.
 
 BoundBox::~BoundBox() {
   for (Sector *s : sectors) {
