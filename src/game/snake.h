@@ -113,6 +113,11 @@ class Snake : public std::enable_shared_from_this<Snake> {
   inline float get_head_dx() const { return parts[0].x - parts[1].x; }
   inline float get_head_dy() const { return parts[0].y - parts[1].y; }
 
+  // Última posição inteira enviada para os clientes (tracking para movimento relativo)
+  // Usado para decidir quando enviar movimento relativo (G) ou absoluto (g).
+  int32_t last_sent_x = 0;
+  int32_t last_sent_y = 0;
+
   std::shared_ptr<Snake> get_ptr();
   BoundBox get_new_box() const;
 
