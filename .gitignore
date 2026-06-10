@@ -53,3 +53,5 @@ src/merged_js.txt
 *.7z
 
 src/run.sh
+server.log
+*.log
