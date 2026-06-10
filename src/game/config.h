@@ -56,10 +56,8 @@ struct WorldConfig {
   // Tempo base do frame (tick do servidor) em milissegundos.
   static const long frame_time_ms = 8; // Intervalo do loop em ms (mundo/frames).
 
-  // Raio do battledome (centro do mapa). Você pediu: metade do tamanho do mapa.
-  // Centro do mapa fica em (game_radius, game_radius) no sistema usado aqui.
-  static const uint16_t battledome_radius = game_radius / 2; // Regra: entrar e depois tentar sair => morte.
 
+  
   // Versão do protocolo suportada neste servidor.
   static const uint8_t protocol_version = 13; // Versão do protocolo do jogo — ajustado a partir do PacketInit.
 };

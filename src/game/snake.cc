@@ -20,9 +20,6 @@ bool Snake::Tick(long dt, SectorSeq *ss, const WorldConfig &config) {
   if (update & (change_dying | change_dead)) {
     return false;
   }
-
-  // Battledome (anel verde no centro) é checado após mover a cabeça (fora do bloco AI/rotação).
-  // Regra: entrar marca `in_battledome`; ao sair depois de ter entrado, cobra morre.
   
   // --- AI LOGIC ---
   if (bot) {
@@ -180,29 +177,7 @@ bool Snake::Tick(long dt, SectorSeq *ss, const WorldConfig &config) {
     mov_ticks -= frames_ticks;
   }
 
-  // Battledome check (após o movimento, usando a posição atual da cabeça).
-  // Centro do mapa no sistema do servidor: (game_radius, game_radius).
-  {
-    const float cx = static_cast<float>(WorldConfig::game_radius); // centro X do mundo
-    const float cy = static_cast<float>(WorldConfig::game_radius); // centro Y do mundo
-    const float r = static_cast<float>(WorldConfig::battledome_radius); // raio do battledome
-
-    const float head_x = parts[0].x;
-    const float head_y = parts[0].y;
-
-    const bool inside = dist_sq(head_x, head_y, cx, cy) <= (r * r);
-
-    if (inside) {
-      in_battledome = true; // entrou (ou continua dentro)
-    } else {
-      if (in_battledome) {
-        // tentou sair depois de entrar => aplica mesma lógica de morte.
-        // World::CheckSnakeBounds detecta morte via flags change_dying|change_dead.
-        update |= change_dying;
-        return false; // interrompe tick: cobra está “morrendo”
-      }
-    }
-  }
+  
 
   if (changes > 0 && changes != update) {
     update |= changes;

@@ -157,19 +157,7 @@ void GameServer::on_timer(error_code const &ec) {
 void GameServer::BroadcastDebug() {
   packet_debug_draw draw;
 
-  // O círculo do battledome precisa aparecer sempre (define a regra de morte ao sair).
-
-  // Battledome (anel verde no centro) — desenha mesmo que nenhum snake tenha mudado.
-  // Isso ajuda a client-side map overlay a “aparecer” com o mesmo raio do servidor.
-  {
-    const uint16_t sis = 60000; // Separador numérico para debug circles (evita colisão com ids do snake).
-    draw.circles.push_back(
-        d_draw_circle{sis,
-                      {static_cast<float>(WorldConfig::game_radius),
-                       static_cast<float>(WorldConfig::game_radius)},
-                      static_cast<float>(WorldConfig::battledome_radius),
-                      0x00ff00});
-  }
+  
 
   for (Snake *s : world.GetChangedSnakes()) {
     uint16_t sis = static_cast<uint16_t>(s->id * 1000);
