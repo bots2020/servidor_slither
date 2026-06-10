@@ -11,11 +11,11 @@ struct PacketInit : public PacketBase {
   uint16_t sector_size = 256; // Tamanho de cada setor no grid (int16).
   uint16_t sector_count_along_edge = 28; // Quantidade de setores ao longo do lado do grid (int16).
   float spangdv = 4.8f; // Parâmetro spangdv do protocolo (armazenado como int8 no encoding).
-  float nsp1 = 5.39f; // Parâmetro nsp1 do protocolo (int16 no encoding).
-  float nsp2 = 0.4f;  // Parâmetro nsp2 do protocolo (int16 no encoding).
-  float nsp3 = 14.0f; // Parâmetro nsp3 do protocolo (int16 no encoding).
+  float nsp1 = 4.25f; // Parâmetro nsp1 do protocolo (int16 no encoding).
+  float nsp2 = 0.5f;  // Parâmetro nsp2 do protocolo (int16 no encoding).
+  float nsp3 = 12.0f; // Parâmetro nsp3 do protocolo (int16 no encoding).
   float snake_ang_speed = 0.033f; // Velocidade angular da cobra (int16 no encoding).
-  float prey_ang_speed = 0.029f; // Velocidade angular da presa/prey (int16 no encoding).
+  float prey_ang_speed = 0.028f; // Velocidade angular da presa/prey (int16 no encoding).
   float snake_tail_k = 0.43f; // Constante do tail da cobra (int16 no encoding).
   uint8_t protocol_version = 13; // Versão do protocolo suportada (int8).
   

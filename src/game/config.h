@@ -19,7 +19,7 @@ struct WorldConfig {
   bool bot_respawn = true; // Controle do respawn de bots.
 
   // Número de itens de comida que devem nascer por tick do mundo.
-  uint16_t food_spawn_rate = 2; // Taxa de spawn de comida.
+  uint16_t food_spawn_rate = 0; // Taxa de spawn de comida.
 
   // --- NOVO: Pesos de escolha de setor para spawn de comida ---
   // Pesos funcionam como proporções. Ex.: 25, 25, 50 => 25% perto, 25% no setor da cobra, 50% aleatório.

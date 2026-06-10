@@ -123,9 +123,9 @@ class Snake : public std::enable_shared_from_this<Snake> {
 
   // Constants
   static constexpr float spangdv = 4.8f;
-  static constexpr float nsp1 = 5.39f; 
-  static constexpr float nsp2 = 0.4f;
-  static constexpr float nsp3 = 14.0f; 
+  static constexpr float nsp1 = 4.25f; 
+  static constexpr float nsp2 = 0.5f;
+  static constexpr float nsp3 = 12.0f; 
   static const uint16_t base_move_speed = 172; 
   static const uint16_t boost_speed = 448;     
   static const uint16_t speed_acceleration = 1000;
@@ -153,7 +153,8 @@ class Snake : public std::enable_shared_from_this<Snake> {
   bool BotCheckCollision(SectorSeq *ss, float look_ahead_dist, float &out_avoid_ang);
 
  private:
-  float gsc = 0.0f;
+  float sgsc = 0.9f * 18.0f / 14.0f;
+  float gsc = sgsc;
   float sc = 0.0f;
   float scang = 0.0f;
   float ssp = 0.0f;

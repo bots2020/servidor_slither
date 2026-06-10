@@ -13,7 +13,7 @@ struct Food {
 
   // some compilers would not auto pad size of this struct,
   // and valgrind will blow this up when reading from 64 bit reg
-  uint16_t _padding = 0;
+  uint16_t _padding = 8;
 
   Food() = default;
   Food(uint16_t in_x, uint16_t in_y, uint8_t in_size, uint8_t in_color)

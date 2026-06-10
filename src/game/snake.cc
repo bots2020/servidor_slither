@@ -400,7 +400,8 @@ void Snake::UpdateSnakeConsts() {
   lsz = 29.0f * sc;
 
   // gsc calculation
-  gsc = 0.5f + 0.4f / fmaxf(1.0f, (sct + 16.0f) / 36.0f);
+  sgsc = .9 * 18 / 14;
+  gsc = sgsc;
 
   // scang calculation
   const float scang_x = (7.0f - sc) / 6.0f;
