@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
+#include <cmath>
 
 #include "game/math.h"
 
@@ -370,7 +371,28 @@ void GameServer::BroadcastUpdates() {
             broadcast_binary(packet_remove_part(ptr));
             ptr->clientPartsIndex--;
           }
-          broadcast_binary(packet_move(ptr));
+
+          // Decide between relative move ('G') or absolute move ('g')
+          int32_t rx = static_cast<int32_t>(std::lround(ptr->get_head_x()));
+          int32_t ry = static_cast<int32_t>(std::lround(ptr->get_head_y()));
+          int32_t dx = rx - ptr->last_sent_x;
+          int32_t dy = ry - ptr->last_sent_y;
+
+          if (std::abs(dx) <= 127 && std::abs(dy) <= 127) {
+            // Send relative move (signed 8-bit encoded as unsigned inside struct)
+            broadcast_binary(packet_move_rel(static_cast<uint16_t>(ptr->id),
+                                             static_cast<int8_t>(dx),
+                                             static_cast<int8_t>(dy)));
+            ptr->last_sent_x += dx;
+            ptr->last_sent_y += dy;
+          } else {
+            // Send absolute move
+            uint16_t ux = static_cast<uint16_t>(rx & 0xFFFF);
+            uint16_t uy = static_cast<uint16_t>(ry & 0xFFFF);
+            broadcast_binary(packet_move(static_cast<uint16_t>(ptr->id), ux, uy));
+            ptr->last_sent_x = rx;
+            ptr->last_sent_y = ry;
+          }
         }
 
         SendFoodUpdate(ptr);
