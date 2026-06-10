@@ -10,6 +10,7 @@ RELATIVE PATH: game/world.cc
 #include <ctime>
 #include <iostream>
 #include <vector>
+#include <cmath>
 
 #include "game/math.h"
 #include "game/bot_names.h"
@@ -133,6 +134,10 @@ Snake::Ptr World::CreateSnake(int start_len) {
     s->UpdateBoxRadius();
     s->UpdateSnakeConsts();
     s->InitBoxNewSectors(&sectors);
+
+    // Inicializa last_sent para uso no envio de movimentos relativos
+    s->last_sent_x = static_cast<int32_t>(std::lround(s->get_head_x()));
+    s->last_sent_y = static_cast<int32_t>(std::lround(s->get_head_y()));
 
     return s;
 }
