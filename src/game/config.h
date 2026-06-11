@@ -54,7 +54,7 @@ struct WorldConfig {
   static const uint16_t move_step_distance = 42; // Distância percorrida por passo de movimento em ticks.
 
   // Tempo base do frame (tick do servidor) em milissegundos.
-  static const long frame_time_ms = 8; // Intervalo do loop em ms (mundo/frames).
+  static const long frame_time_ms = 75; // Intervalo do loop em ms (mundo/frames).
 
 
   

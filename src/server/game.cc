@@ -663,16 +663,16 @@ void GameServer::on_message(connection_hdl hdl, message_ptr ptr) {
       }
   }
 
-  if (packet_type <= 250 && len == 1 && 
-      packet_type != in_packet_t_start_login && 
-      packet_type != in_packet_t_username_skin) {
-    const float angle = Math::f_pi * packet_type / 125.0f;
-    DoSnake(ss.snake_id, [=](Snake *s) {
-      s->wangle = angle;
-      s->update |= change_wangle;
-    });
-    return;
-  }
+  if (packet_type <= 250 && len == 1 && ...)
+{
+  // nodeslither decoder uses divisor 251 (byte -> angle = byte * 2π / 251)
+  const float angle = Math::f_2pi * static_cast<int>(packet_type) / 251.0f;
+  DoSnake(ss.snake_id, [=](Snake *s) {
+    s->wangle = angle;
+    s->update |= change_wangle;
+  });
+  return;
+}
 
   switch (packet_type) {
     case in_packet_t_ping:

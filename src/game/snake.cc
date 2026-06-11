@@ -35,31 +35,27 @@ bool Snake::Tick(long dt, SectorSeq *ss, const WorldConfig &config) {
     }
   }
 
-  // --- ROTATION LOGIC ---
+      // --- ROTATION LOGIC (nodeslither-style: turnAmount = MAMU * vfr * scang * spang) ---
   if (angle != wangle) {
-    rot_ticks += dt;
-    if (rot_ticks >= rot_step_interval) {
-      const long frames = rot_ticks / rot_step_interval;
-      const long frames_ticks = frames * rot_step_interval;
-      const float rotation = snake_angular_speed * frames_ticks / 1000.0f;
-      float dAngle = Math::normalize_angle(wangle - angle);
+    // vfr = frames relative to base 8ms used in client
+    const float vfr = static_cast<float>(dt) / 8.0f;
+    // turn amount (radians) aplicável neste tick
+    const float turnAmount = Snake::mamu * vfr * scang * spang;
 
-      if (dAngle > Math::f_pi) {
-        dAngle -= Math::f_2pi;
-      }
+    // diferença angular minimal [-PI, PI]
+    float dAngle = Math::normalize_angle(wangle - angle);
+    if (dAngle > Math::f_pi) dAngle -= Math::f_2pi;
+    if (dAngle < -Math::f_pi) dAngle += Math::f_2pi;
 
-      if (fabsf(dAngle) < rotation) {
-        angle = wangle;
-      } else {
-        angle += rotation * (dAngle > 0 ? 1.0f : -1.0f);
-      }
-
-      angle = Math::normalize_angle(angle);
-
-      changes |= change_angle;
-      rot_ticks -= frames_ticks;
+    if (fabsf(dAngle) < turnAmount) {
+      angle = wangle;
+    } else {
+      angle = Math::normalize_angle(angle + (dAngle > 0.0f ? turnAmount : -turnAmount));
     }
+
+    changes |= change_angle;
   }
+}
 
   // --- MOVEMENT LOGIC ---
   mov_ticks += dt;
@@ -410,7 +406,10 @@ void Snake::UpdateSnakeConsts() {
   ssp = nsp1 + nsp2 * sc;
   fsp = ssp + 0.1f;
 
-  sbpr = lsz * 0.5f; 
+  // spang = min(1, baseSpeed / spangdv)  -> replica a fórmula do cliente (nodeslither)
+  spang = fminf(1.0f, ssp / spangdv);
+
+  sbpr = lsz * 0.5f;
 }
 
 void Snake::InitBoxNewSectors(SectorSeq *ss) {

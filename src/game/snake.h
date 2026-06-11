@@ -129,6 +129,8 @@ class Snake : public std::enable_shared_from_this<Snake> {
   static const uint16_t base_move_speed = 172; 
   static const uint16_t boost_speed = 448;     
   static const uint16_t speed_acceleration = 1000;
+  static constexpr float mamu = 0.033f;
+  static constexpr float mamu2 = 0.028f;
   static constexpr float snake_angular_speed = 4.125f; 
   static constexpr float prey_angular_speed = 3.625f;    
   static constexpr float snake_tail_k = 0.43f; 
@@ -160,6 +162,7 @@ class Snake : public std::enable_shared_from_this<Snake> {
   float ssp = 0.0f;
   float fsp = 0.0f;
   float sbpr = 0.0f;
+  float spang = 1.0f;
 };
 
 typedef std::vector<Snake *> SnakeVec;
