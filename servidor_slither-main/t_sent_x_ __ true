@@ -1,0 +1,36 @@
+[33mcommit b5f35247a78042ee3cf20e440eda602bf95e40b6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: bots2020 <74159754+bots2020@users.noreply.github.com>
+Date:   Wed Jun 10 15:03:18 2026 -0300
+
+    feat: init last_sent coords when creating snake
+
+[1mdiff --git a/src/game/world.cc b/src/game/world.cc[m
+[1mindex 4e95a5f..dc845c1 100644[m
+[1m--- a/src/game/world.cc[m
+[1m+++ b/src/game/world.cc[m
+[36m@@ -10,6 +10,7 @@[m [mRELATIVE PATH: game/world.cc[m
+ #include <ctime>[m
+ #include <iostream>[m
+ #include <vector>[m
+[32m+[m[32m#include <cmath>[m
+ [m
+ #include "game/math.h"[m
+ #include "game/bot_names.h"[m
+[36m@@ -134,6 +135,10 @@[m [mSnake::Ptr World::CreateSnake(int start_len) {[m
+     s->UpdateSnakeConsts();[m
+     s->InitBoxNewSectors(&sectors);[m
+ [m
+[32m+[m[32m    // Inicializa last_sent para uso no envio de movimentos relativos[m
+[32m+[m[32m    s->last_sent_x = static_cast<int32_t>(std::lround(s->get_head_x()));[m
+[32m+[m[32m    s->last_sent_y = static_cast<int32_t>(std::lround(s->get_head_y()));[m
+[32m+[m
+     return s;[m
+ }[m
+ [m
+[36m@@ -465,4 +470,4 @@[m [mstd::ostream &operator<<(std::ostream &out, const World &w) {[m
+         << "\n\tparts_start_move_count = " << Snake::parts_start_move_count[m
+         << "\n\tmove_step_distance = " << WorldConfig::move_step_distance[m
+         << "\n\trot_step_angle = " << Snake::rot_step_angle;[m
+[31m-}[m
+\ No newline at end of file[m
+[32m+[m[32m}[m
