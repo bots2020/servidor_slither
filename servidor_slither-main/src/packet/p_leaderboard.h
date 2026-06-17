@@ -26,14 +26,14 @@ struct packet_leaderboard : public PacketBase {
   ?-?	string	username
   */
   std::vector<std::shared_ptr<Snake>> top;  // 2 + 3 + 1 + 1 string each
+  float gamu = 1.0f;
 
   size_t get_size() const noexcept {
     size_t size = 8;
-
     for (const auto& ptr : top) {
       size += 2 + 3 + 1 + 1 + ptr->name.length();
     }
-
+    size += 3;
     return size;
   }
 };

@@ -12,8 +12,9 @@ std::ostream& operator<<(std::ostream& out, const packet_leaderboard& p) {
   for (const auto& ptr : p.top) {
     out << write_uint16(ptr->parts.size());
     out << write_fp24(ptr->fullness / 100.0f);
-    out << write_uint8(ptr->skin); // Font color in docs, often mapped to skin or constant
+    out << write_uint8(ptr->skin);
     out << write_string(ptr->name);
   }
+  out << write_fp24(p.gamu);
   return out;
 }

@@ -2,16 +2,16 @@
 
 #include <boost/program_options.hpp>
 
-namespace po = boost::program_options; // Alias para facilitar o uso do namespace “boost::program_options”.
+namespace po = boost::program_options;
 
 // bug clang++ 3.5 vs new gcc abi cant link against libboost build with gcc
 // https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=797917
 // http://stackoverflow.com/questions/34387406/boost-program-options-not-linking-correctly-under-clang
 // http://developerblog.redhat.com/2015/02/05/gcc5-and-the-c11-abi/
-IncomingConfig ParseCommandLine(const int argc, const char *const *argv) { // Faz parse da linha de comando e monta a configuração do servidor.
-  IncomingConfig config; // Estrutura com valores padrão (e possivelmente sobrescritos pelo usuário).
+IncomingConfig ParseCommandLine(const int argc, const char *const *argv) {
+  IncomingConfig config;
 
-  po::options_description generic("Generic options"); // Grupo de opções “genéricas” (help/verbose/version/port/debug).
+  po::options_description generic("Generic options");
   generic.add_options()("help,h", po::bool_switch(&config.help),
                         "print help message")(
       "verbose,v", po::bool_switch(&config.verbose), "set verbose output")(
@@ -21,7 +21,7 @@ IncomingConfig ParseCommandLine(const int argc, const char *const *argv) { // Fa
                    po::bool_switch(&config.debug)->default_value(config.debug),
                    "enable debug mode");
 
-  po::options_description conf("Configuration"); // Grupo de opções específicas de configuração do mundo/jogo.
+  po::options_description conf("Configuration");
     conf.add_options()
         ("bots,b",
          po::value<uint16_t>(&config.world.bots)->default_value(config.world.bots),
@@ -50,24 +50,24 @@ IncomingConfig ParseCommandLine(const int argc, const char *const *argv) { // Fa
                        ->default_value(config.world.spawn_prob_random),
          "weight: target completely random sector (default: 50)");
 
-  po::options_description cmdline_options; // Combina grupos de opções para o parse final.
-  cmdline_options.add(generic).add(conf); // Adiciona “generic” e “conf” ao conjunto global.
+  po::options_description cmdline_options;
+  cmdline_options.add(generic).add(conf);
 
-  po::variables_map vm; // Contém os valores resultantes do parse das opções.
+  po::variables_map vm;
 
-  try { // Tenta parsear os argumentos sem falhar.
-    po::store(po::parse_command_line(argc, argv, cmdline_options), vm); // Parse “cru” e armazena em vm.
-    po::notify(vm); // Propaga valores para as variáveis apontadas no config.
-  } catch (const po::unknown_option &e) { // Se houver opção desconhecida, força help.
-    std::cerr << "error: " << e.what() << '\n'; // Mostra o motivo do erro.
-    config.help = true; // Gera comportamento de “mostrar uso”.
+  try {
+    po::store(po::parse_command_line(argc, argv, cmdline_options), vm);
+    po::notify(vm);
+  } catch (const po::unknown_option &e) {
+    std::cerr << "error: " << e.what() << '\n';
+    config.help = true;
   }
 
-  if (config.help) { // Se a flag help estiver ativa, mostra usage e aborta.
-    std::cerr << "Usage: slither_server [OPTIONS]\n"; // Mostra instruções de uso.
-    std::cerr << cmdline_options << '\n'; // Mostra todas as opções disponíveis.
-    exit(1); // Finaliza com erro (1).
+  if (config.help) {
+    std::cerr << "Usage: slither_server [OPTIONS]\n";
+    std::cerr << cmdline_options << '\n';
+    exit(1);
   }
 
-  return config; // Retorna a configuração final montada (com defaults e overrides).
+  return config;
 }

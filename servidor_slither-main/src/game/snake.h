@@ -59,9 +59,12 @@ class Snake : public std::enable_shared_from_this<Snake> {
   bool acceleration;
   bool bot;
 
-  // Flag: cobra já entrou no battledome pelo menos uma vez.
-  // Usada para “entrar e tentar sair => morte”.
-  bool in_battledome = false; // Estado persistente durante a vida.
+  bool newly_spawned = true;
+  bool dome_entered = false;
+  long dome_grow_ticks = 0;
+
+  static const uint16_t dome_target_parts = 36;
+  static const long dome_grow_interval = 150;
 
   std::string name;
   std::string custom_skin_data;
@@ -113,22 +116,17 @@ class Snake : public std::enable_shared_from_this<Snake> {
   inline float get_head_dx() const { return parts[0].x - parts[1].x; }
   inline float get_head_dy() const { return parts[0].y - parts[1].y; }
 
-  // Última posição inteira enviada para os clientes (tracking para movimento relativo)
-  // Usado para decidir quando enviar movimento relativo (G) ou absoluto (g).
-  int32_t last_sent_x = 0;
-  int32_t last_sent_y = 0;
-
   std::shared_ptr<Snake> get_ptr();
   BoundBox get_new_box() const;
 
   // Constants
   static constexpr float spangdv = 4.8f;
-  static constexpr float nsp1 = 5.390f; 
+  static constexpr float nsp1 = 5.39f; 
   static constexpr float nsp2 = 0.4f;
   static constexpr float nsp3 = 14.0f; 
-  static const uint16_t base_move_speed = 175; 
+  static const uint16_t base_move_speed = 172; 
   static const uint16_t boost_speed = 448;     
-  static const uint16_t speed_acceleration = 1000;
+  static const uint16_t speed_acceleration = 400;
   static constexpr float snake_angular_speed = 4.125f; 
   static constexpr float prey_angular_speed = 3.625f;    
   static constexpr float snake_tail_k = 0.43f; 
@@ -136,25 +134,21 @@ class Snake : public std::enable_shared_from_this<Snake> {
   static const int parts_skip_count = 3;
   static const int parts_start_move_count = 4;
   static constexpr float tail_step_distance = 24.0f;
-  // Ângulo por “step” de rotação (equilíbrio com a velocidade e boost).
-  static constexpr float rot_step_angle =
-      1.0f * WorldConfig::move_step_distance / boost_speed * snake_angular_speed;
-  // Intervalo em ms para aplicar um step de rotação.
-  static const long rot_step_interval =
-      static_cast<long>(1000.0f * rot_step_angle / snake_angular_speed);
+  static constexpr float rot_step_angle = 1.0f * WorldConfig::move_step_distance / boost_speed * snake_angular_speed; 
+  static const long rot_step_interval = static_cast<long>(1000.0f * rot_step_angle / snake_angular_speed);
   static const long ai_step_interval = 250; 
 
  private:
   long mov_ticks = 0;
   long rot_ticks = 0;
   long ai_ticks = 0;
+  float angle_prev = 0.0f;
 
   void BotFindFood(SectorSeq *ss);
   bool BotCheckCollision(SectorSeq *ss, float look_ahead_dist, float &out_avoid_ang);
 
  private:
-  float sgsc = 0.9f * 18.0f / 14.0f;
-  float gsc = sgsc;
+  float gsc = 0.0f;
   float sc = 0.0f;
   float scang = 0.0f;
   float ssp = 0.0f;

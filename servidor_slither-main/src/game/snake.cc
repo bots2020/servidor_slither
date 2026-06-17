@@ -4,12 +4,6 @@
 #include <algorithm> // For min/max
 #include "game/math.h"
 
-static inline float dist_sq(float x1, float y1, float x2, float y2) {
-  const float dx = x1 - x2;
-  const float dy = y1 - y2;
-  return dx * dx + dy * dy;
-}
-
 // ----------------------------------------------------------------------
 // MAIN TICK LOOP
 // ----------------------------------------------------------------------
@@ -20,7 +14,7 @@ bool Snake::Tick(long dt, SectorSeq *ss, const WorldConfig &config) {
   if (update & (change_dying | change_dead)) {
     return false;
   }
-  
+
   // --- AI LOGIC ---
   if (bot) {
     ai_ticks += dt;
@@ -37,28 +31,22 @@ bool Snake::Tick(long dt, SectorSeq *ss, const WorldConfig &config) {
 
   // --- ROTATION LOGIC ---
   if (angle != wangle) {
-    rot_ticks += dt;
-    if (rot_ticks >= rot_step_interval) {
-      const long frames = rot_ticks / rot_step_interval;
-      const long frames_ticks = frames * rot_step_interval;
-      const float rotation = snake_angular_speed * frames_ticks / 1000.0f;
-      float dAngle = Math::normalize_angle(wangle - angle);
+    float spang = fminf(1.0f, static_cast<float>(speed) / spangdv);
+    const float rotation = snake_angular_speed * dt / 1000.0f * scang * spang;
+    float dAngle = Math::normalize_angle(wangle - angle);
 
-      if (dAngle > Math::f_pi) {
-        dAngle -= Math::f_2pi;
-      }
-
-      if (fabsf(dAngle) < rotation) {
-        angle = wangle;
-      } else {
-        angle += rotation * (dAngle > 0 ? 1.0f : -1.0f);
-      }
-
-      angle = Math::normalize_angle(angle);
-
-      changes |= change_angle;
-      rot_ticks -= frames_ticks;
+    if (dAngle > Math::f_pi) {
+      dAngle -= Math::f_2pi;
     }
+
+    if (fabsf(dAngle) < rotation) {
+      angle = wangle;
+    } else {
+      angle += rotation * (dAngle > 0 ? 1.0f : -1.0f);
+    }
+
+    angle = Math::normalize_angle(angle);
+    changes |= change_angle;
   }
 
   // --- MOVEMENT LOGIC ---
@@ -70,11 +58,22 @@ bool Snake::Tick(long dt, SectorSeq *ss, const WorldConfig &config) {
     const float move_dist = speed * frames_ticks / 1000.0f;
     const size_t len = parts.size();
 
-    // move head
     Body &head = parts[0];
     Body prev = head;
-    head.x += cosf(angle) * move_dist;
-    head.y += sinf(angle) * move_dist;
+
+    static const int arc_steps = 6;
+    const float sub_dist = move_dist / arc_steps;
+    float ang_diff = Math::normalize_angle(angle - angle_prev);
+    if (ang_diff > Math::f_pi) ang_diff -= Math::f_2pi;
+    float hx = head.x, hy = head.y;
+    for (int k = 1; k <= arc_steps; ++k) {
+      const float ang_k = angle_prev + ang_diff * k / arc_steps;
+      hx += cosf(ang_k) * sub_dist;
+      hy += sinf(ang_k) * sub_dist;
+    }
+    head.x = hx;
+    head.y = hy;
+    angle_prev = angle;
 
     sbb.UpdateBoxNewSectors(ss, WorldConfig::sector_size / 2, head.x, head.y,
                             prev.x, prev.y);
@@ -82,7 +81,6 @@ bool Snake::Tick(long dt, SectorSeq *ss, const WorldConfig &config) {
       vp.UpdateBoxNewSectors(ss, head.x, head.y, prev.x, prev.y);
     }
 
-    // bound box
     float bbx = head.x;
     float bby = head.y;
 
@@ -94,30 +92,24 @@ bool Snake::Tick(long dt, SectorSeq *ss, const WorldConfig &config) {
       prev = old;
     }
 
-    // move intermediate
     for (size_t i = parts_skip_count, j = 0; i < len && i < parts_skip_count + parts_start_move_count; ++i) {
       Body &pt = parts[i];
       const Body last = parts[i - 1];
       const Body old = pt;
-
       pt.From(prev);
       const float move_coeff = snake_tail_k * (++j) / parts_start_move_count;
       pt.Offset(move_coeff * (last.x - pt.x), move_coeff * (last.y - pt.y));
-
       bbx += pt.x;
       bby += pt.y;
       prev = old;
     }
 
-    // move tail
     for (size_t i = parts_skip_count + parts_start_move_count, j = 0; i < len; ++i) {
       Body &pt = parts[i];
       const Body last = parts[i - 1];
       const Body old = pt;
-
       pt.From(prev);
       pt.Offset(snake_tail_k * (last.x - pt.x), snake_tail_k * (last.y - pt.y));
-
       static const size_t tail_step =
           static_cast<size_t>(WorldConfig::sector_size / tail_step_distance);
       if (j + tail_step >= i) {
@@ -125,7 +117,6 @@ bool Snake::Tick(long dt, SectorSeq *ss, const WorldConfig &config) {
                                 old.x, old.y);
         j = i;
       }
-
       bbx += pt.x;
       bby += pt.y;
       prev = old;
@@ -133,32 +124,34 @@ bool Snake::Tick(long dt, SectorSeq *ss, const WorldConfig &config) {
 
     changes |= change_pos;
 
-    // update bb
     sbb.x = bbx / parts.size();
     sbb.y = bby / parts.size();
     vp.x = head.x;
     vp.y = head.y;
     UpdateBoxRadius();
     sbb.UpdateBoxOldSectors();
-    if (!bot) {
-      vp.UpdateBoxOldSectors();
-    }
-    
-    // Check for food
+    if (!bot) vp.UpdateBoxOldSectors();
+
     UpdateEatenFood(ss);
 
-    // update speed
     if (acceleration) {
-      // Check if we can afford to boost
-      // Can only boost if size > start_score (or min_length if start_score is small)
-      // Use target_score as the threshold (which is set to start_score)
       uint16_t threshold = target_score > 0 ? target_score : 10;
-      
-      // Allow boosting only if we are above the threshold
       if (parts.size() <= threshold && fullness == 0) {
         acceleration = false;
       } else {
         DecreaseSnake(config.boost_cost, config.boost_drop_size);
+      }
+    }
+
+    if (dome_grow_ticks > 0) {
+      dome_grow_ticks -= frames_ticks;
+      if (dome_grow_ticks <= 0) {
+        if (parts.size() < dome_target_parts) {
+          IncreaseSnake(100);
+          dome_grow_ticks = dome_grow_interval;
+        } else {
+          dome_grow_ticks = 0;
+        }
       }
     }
 
@@ -176,8 +169,6 @@ bool Snake::Tick(long dt, SectorSeq *ss, const WorldConfig &config) {
 
     mov_ticks -= frames_ticks;
   }
-
-  
 
   if (changes > 0 && changes != update) {
     update |= changes;
@@ -383,7 +374,7 @@ void Snake::UpdateBoxRadius() {
 
   // reserve 1 step ahead of the snake radius
   sbb.r = (d + WorldConfig::move_step_distance) / 2.0f;
-  vp.r = WorldConfig::sector_diag_size * 3.0f;
+  vp.r = static_cast<float>(WorldConfig::game_radius) * 2.0f;
 }
 
 // UPDATED: AS3 Physics Constants
@@ -400,8 +391,7 @@ void Snake::UpdateSnakeConsts() {
   lsz = 29.0f * sc;
 
   // gsc calculation
-  sgsc = .9 * 18 / 14;
-  gsc = sgsc;
+  gsc = 0.5f + 0.4f / fmaxf(1.0f, (sct + 16.0f) / 36.0f);
 
   // scang calculation
   const float scang_x = (7.0f - sc) / 6.0f;
@@ -419,7 +409,7 @@ void Snake::InitBoxNewSectors(SectorSeq *ss) {
                           0.0f, 0.0f);
 
   if (!bot) {
-    vp.UpdateBoxNewSectors(ss, head.x, head.y, 0.0f, 0.0f);
+    vp.InitAllSectors(ss);
   }
 
   const size_t len = parts.size();
@@ -464,13 +454,12 @@ void Snake::UpdateEatenFood(SectorSeq *ss) {
         
         auto it = sec->food.begin();
         while (it != sec->food.end()) {
-            // Fast Bounding Box Check
+            if (it->permanent) { ++it; continue; }
             if (fabs(it->x - mouth_x) < search_r && fabs(it->y - mouth_y) < search_r) {
-                // Exact Distance Check
                 if (Math::dist_sq(it->x, it->y, mouth_x, mouth_y) < eat_dist_sq) {
                     on_food_eaten(*it);
                     it = sec->food.erase(it);
-                    continue; 
+                    continue;
                 }
             }
             ++it;
@@ -498,7 +487,9 @@ void Snake::IncreaseSnake(uint16_t volume) {
   fullness += volume;
   if (fullness >= 100) {
     fullness -= 100;
-    parts.push_back(parts.back());
+    if (parts.size() < WorldConfig::max_snake_parts) {
+      parts.push_back(parts.back());
+    }
   }
   update |= change_fullness;
   UpdateSnakeConsts();
@@ -547,34 +538,30 @@ void Snake::on_dead_food_spawn(SectorSeq *ss, std::function<float()> next_random
   auto end = parts.end();
   const float r = get_snake_body_part_radius();
   const uint16_t r2 = static_cast<uint16_t>(r * 3);
-  const size_t count = static_cast<size_t>(sc * 2);
-  const uint8_t food_size = static_cast<uint8_t>(100 / count);
+  const size_t count = 4;
+  const uint8_t food_size = 12;
 
   for (auto i = parts.begin(); i != end; ++i) {
     // Safety check for NaN or negative coordinates
     if (std::isnan(i->x) || std::isnan(i->y) || i->x < 0 || i->y < 0) continue;
 
-    const uint16_t sx = static_cast<uint16_t>(i->x / WorldConfig::sector_size);
-    const uint16_t sy = static_cast<uint16_t>(i->y / WorldConfig::sector_size);
-    
-    // Bounds check before accessing sector array
-    if (sx < WorldConfig::sector_count_along_edge && 
-        sy < WorldConfig::sector_count_along_edge) {
-      
-      for (size_t j = 0; j < count; j++) {
+    for (size_t j = 0; j < count; j++) {
         Food f = {static_cast<uint16_t>(i->x + r - next_randomf() * r2),
                   static_cast<uint16_t>(i->y + r - next_randomf() * r2),
                   food_size, static_cast<uint8_t>(29 * next_randomf())};
 
-        // Double check food bounds
-        if (f.x < WorldConfig::game_radius * 2 && f.y < WorldConfig::game_radius * 2) {
-            Sector *sec = ss->get_sector(sx, sy);
-            if (sec) {
-                sec->Insert(f);
-                spawn.push_back(f);
-            }
+        if (f.x >= WorldConfig::game_radius * 2 || f.y >= WorldConfig::game_radius * 2) continue;
+
+        const uint16_t fsx = static_cast<uint16_t>(f.x / WorldConfig::sector_size);
+        const uint16_t fsy = static_cast<uint16_t>(f.y / WorldConfig::sector_size);
+        if (fsx >= WorldConfig::sector_count_along_edge ||
+            fsy >= WorldConfig::sector_count_along_edge) continue;
+
+        Sector *sec = ss->get_sector(fsx, fsy);
+        if (sec) {
+            sec->Insert(f);
+            spawn.push_back(f);
         }
-      }
     }
   }
 }

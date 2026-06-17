@@ -62,6 +62,7 @@ enum out_packet_t : uint8_t {
   packet_t_rem_sector = 'w',
   packet_t_highscore = 'm',
   packet_t_pong = 'p',
+  packet_t_active_radius = 'z',
   
   // MINIMAP TYPES
   packet_t_minimap = 'M',        // Modern/C Client (Reverse encoded + Size Header)

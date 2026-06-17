@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
-#include <cmath>
 
 #include "game/math.h"
 
@@ -20,34 +19,34 @@
 #define COLOR_BOLD    "\033[1m"
 
 // Helper function to convert packet data to hex string
-static std::string to_hex(const std::string& data, size_t max_bytes = 64) { // Converte bytes do pacote em string hexadecimal (para debug).
-  std::stringstream ss; // Stream que acumula a saída formatada.
-  size_t len = std::min(data.size(), max_bytes); // Limita quantos bytes serão mostrados.
-  for (size_t i = 0; i < len; ++i) { // Itera pelos bytes selecionados.
-    ss << std::hex << std::setfill('0') << std::setw(2) // Formatação para 2 dígitos hex.
-       << (int)(unsigned char)data[i] << " "; // Converte byte para inteiro sem sinal e escreve.
-    if ((i + 1) % 16 == 0) ss << "\n                "; // Quebra linha a cada 16 bytes para legibilidade.
+static std::string to_hex(const std::string& data, size_t max_bytes = 64) {
+  std::stringstream ss;
+  size_t len = std::min(data.size(), max_bytes);
+  for (size_t i = 0; i < len; ++i) {
+    ss << std::hex << std::setfill('0') << std::setw(2) 
+       << (int)(unsigned char)data[i] << " ";
+    if ((i + 1) % 16 == 0) ss << "\n                ";
   }
-  if (data.size() > max_bytes) ss << "..."; // Indica que houve truncamento.
-  return ss.str(); // Retorna a string final hex.
+  if (data.size() > max_bytes) ss << "...";
+  return ss.str();
 }
 
-GameServer::GameServer() { // Construtor: configura endpoint websocket e registra handlers.
+GameServer::GameServer() {
   // set up access channels to only log interesting things
-  endpoint.clear_access_channels(alevel::all); // Limpa canais de log anteriores.
-  endpoint.set_access_channels(alevel::access_core); // Habilita log “core” do websocket.
-  endpoint.set_access_channels(alevel::app); // Habilita log da aplicação (uso/erros/estado).
+  endpoint.clear_access_channels(alevel::all);
+  endpoint.set_access_channels(alevel::access_core);
+  endpoint.set_access_channels(alevel::app);
 
   // Initialize the Asio transport policy
-  endpoint.init_asio(); // Inicializa o transporte ASIO.
-  endpoint.set_reuse_addr(true); // Permite reutilizar endereço/porta em reinícios.
+  endpoint.init_asio();
+  endpoint.set_reuse_addr(true);
 
   // Bind the handlers we are using
-  endpoint.set_socket_init_handler(bind(&GameServer::on_socket_init, this, ::_1, ::_2)); // Registra handler para inicializar socket.
+  endpoint.set_socket_init_handler(bind(&GameServer::on_socket_init, this, ::_1, ::_2));
 
-  endpoint.set_open_handler(bind(&GameServer::on_open, this, _1)); // Handler ao abrir conexão.
-  endpoint.set_message_handler(bind(&GameServer::on_message, this, _1, _2)); // Handler ao receber mensagem.
-  endpoint.set_close_handler(bind(&GameServer::on_close, this, _1)); // Handler ao fechar conexão.
+  endpoint.set_open_handler(bind(&GameServer::on_open, this, _1));
+  endpoint.set_message_handler(bind(&GameServer::on_message, this, _1, _2));
+  endpoint.set_close_handler(bind(&GameServer::on_close, this, _1));
 }
 
 int GameServer::Run(IncomingConfig in_config) {
@@ -156,9 +155,11 @@ void GameServer::on_timer(error_code const &ec) {
 }
 
 void GameServer::BroadcastDebug() {
-  packet_debug_draw draw;
+  if (!config.debug) {
+    return;
+  }
 
-  
+  packet_debug_draw draw;
 
   for (Snake *s : world.GetChangedSnakes()) {
     uint16_t sis = static_cast<uint16_t>(s->id * 1000);
@@ -371,28 +372,7 @@ void GameServer::BroadcastUpdates() {
             broadcast_binary(packet_remove_part(ptr));
             ptr->clientPartsIndex--;
           }
-
-          // Decide between relative move ('G') or absolute move ('g')
-          int32_t rx = static_cast<int32_t>(std::lround(ptr->get_head_x()));
-          int32_t ry = static_cast<int32_t>(std::lround(ptr->get_head_y()));
-          int32_t dx = rx - ptr->last_sent_x;
-          int32_t dy = ry - ptr->last_sent_y;
-
-          if (std::abs(dx) <= 127 && std::abs(dy) <= 127) {
-            // Send relative move (signed 8-bit encoded as unsigned inside struct)
-            broadcast_binary(packet_move_rel(static_cast<uint16_t>(ptr->id),
-                                             static_cast<int8_t>(dx),
-                                             static_cast<int8_t>(dy)));
-            ptr->last_sent_x += dx;
-            ptr->last_sent_y += dy;
-          } else {
-            // Send absolute move
-            uint16_t ux = static_cast<uint16_t>(rx & 0xFFFF);
-            uint16_t uy = static_cast<uint16_t>(ry & 0xFFFF);
-            broadcast_binary(packet_move(static_cast<uint16_t>(ptr->id), ux, uy));
-            ptr->last_sent_x = rx;
-            ptr->last_sent_y = ry;
-          }
+          broadcast_binary(packet_move(ptr));
         }
 
         SendFoodUpdate(ptr);
@@ -430,7 +410,8 @@ void GameServer::BroadcastLeaderboard() {
   // 3. Prepare the Top 10 list (Base Packet)
   packet_leaderboard lb_base;
   lb_base.players = static_cast<uint16_t>(sorted_snakes.size());
-  
+  lb_base.gamu = world.GetGamu();
+
   size_t top_count = std::min((size_t)10, sorted_snakes.size());
   for(size_t i = 0; i < top_count; i++) {
       lb_base.top.push_back(sorted_snakes[i]);
@@ -458,45 +439,58 @@ void GameServer::BroadcastLeaderboard() {
       // leaderboard_rank is usually 0 unless you are IN the top 10
       lb_packet.leaderboard_rank = (my_rank <= 10) ? (uint8_t)my_rank : 0;
 
-      // FIX: Pass the iterator 'it' to send_binary
       send_binary(it, lb_packet);
   }
+
+  packet_active_radius ar_pkt;
+  ar_pkt.value = static_cast<uint32_t>(world.GetActiveRadius() * 0.98f);
+  broadcast_binary(ar_pkt);
 }
 
 void GameServer::BroadcastMinimap() {
-  // 1. Define Map Grid Size
-  // Original is 80. You can increase this (e.g. 144) for C clients if desired,
-  // but JS clients strictly expect 80x80 data in 'u' packets.
-  const uint16_t map_dim = 144;
-  
-  std::vector<uint8_t> grid(map_dim * map_dim, 0);
+  const uint16_t js_dim = 80;
+  const uint16_t c_dim  = 144;
 
-  // 2. Map World Coordinates to Grid Coordinates
-  float scale = (float)map_dim / (WorldConfig::game_radius * 2.0f);
+  std::vector<uint8_t> js_grid(js_dim * js_dim, 0);
+  std::vector<uint8_t> c_grid(c_dim * c_dim, 0);
 
+  const float js_scale = (float)js_dim / (WorldConfig::game_radius * 2.0f);
+  const float c_scale  = (float)c_dim  / (WorldConfig::game_radius * 2.0f);
+
+  static int mm_log_count = 0; mm_log_count++;
+  bool do_log = (mm_log_count % 5 == 0);
   for (auto &pair : world.GetSnakes()) {
     Snake* s = pair.second.get();
     if (s->parts.empty() || (s->update & change_dead)) continue;
 
     for (size_t i = 0; i < s->parts.size(); i += 4) {
       const Body& b = s->parts[i];
-      int mx = static_cast<int>(b.x * scale);
-      int my = static_cast<int>(b.y * scale);
-      if (mx >= 0 && mx < map_dim && my >= 0 && my < map_dim) {
-          grid[my * map_dim + mx] = 1; 
+      if (do_log && s->bot) {
+          std::cerr << "[MM] bot x=" << b.x << " y=" << b.y << std::endl;
+          do_log = false;
       }
+
+      int jx = static_cast<int>(b.x * js_scale);
+      int jy = static_cast<int>(b.y * js_scale);
+      if (jx >= 0 && jx < js_dim && jy >= 0 && jy < js_dim)
+        js_grid[jy * js_dim + jx] = 1;
+
+      int cx = static_cast<int>(b.x * c_scale);
+      int cy = static_cast<int>(b.y * c_scale);
+      if (cx >= 0 && cx < c_dim && cy >= 0 && cy < c_dim)
+        c_grid[cy * c_dim + cx] = 1;
     }
   }
 
   // ---------------------------------------------------------
-  // A. Build Forward Packet ('u') for JS Clients
+  // A. Build Forward Packet ('u') for JS Clients — 80x80
   // ---------------------------------------------------------
-  packet_minimap packet_fwd(map_dim);
+  packet_minimap packet_fwd(js_dim);
   packet_fwd.packet_type = packet_t_minimap_legacy; // 'u'
-  
+
   int skip = 0;
-  for (size_t i = 0; i < grid.size(); ) {
-    if (grid[i] == 0) {
+  for (size_t i = 0; i < js_grid.size(); ) {
+    if (js_grid[i] == 0) {
       skip++;
       if (skip >= 127) {
         packet_fwd.data.push_back(static_cast<uint8_t>(128 + skip));
@@ -510,7 +504,7 @@ void GameServer::BroadcastMinimap() {
       }
       uint8_t chunk = 0;
       for (int bit = 0; bit < 7; ++bit) {
-        if (i + bit < grid.size() && grid[i + bit] != 0) chunk |= (1 << (6 - bit));
+        if (i + bit < js_grid.size() && js_grid[i + bit] != 0) chunk |= (1 << (6 - bit));
       }
       packet_fwd.data.push_back(chunk);
       i += 7;
@@ -519,17 +513,15 @@ void GameServer::BroadcastMinimap() {
   if (skip > 0) packet_fwd.data.push_back(static_cast<uint8_t>(128 + skip));
 
   // ---------------------------------------------------------
-  // B. Build Reverse Packet ('M') for C Clients
+  // B. Build Reverse Packet ('M') for C Clients — 144x144
   // ---------------------------------------------------------
-  packet_minimap packet_rev(map_dim);
+  packet_minimap packet_rev(c_dim);
   packet_rev.packet_type = packet_t_minimap; // 'M'
-  
+
   skip = 0;
-  // Iterate backwards!
-  for (int i = (map_dim * map_dim) - 1; i >= 0; ) {
-    if (grid[i] == 0) {
+  for (int i = (c_dim * c_dim) - 1; i >= 0; ) {
+    if (c_grid[i] == 0) {
       skip++;
-      // Cap at 126 for C client safety (128+126 = 254 < 255)
       if (skip >= 126) {
         packet_rev.data.push_back(static_cast<uint8_t>(128 + skip));
         skip = 0;
@@ -541,9 +533,8 @@ void GameServer::BroadcastMinimap() {
         skip = 0;
       }
       uint8_t chunk = 0;
-      // Pack bits backwards
       for (int bit = 0; bit < 7; ++bit) {
-        if (i - bit >= 0 && grid[i - bit] != 0) chunk |= (1 << (6 - bit));
+        if (i - bit >= 0 && c_grid[i - bit] != 0) chunk |= (1 << (6 - bit));
       }
       packet_rev.data.push_back(chunk);
       i -= 7;

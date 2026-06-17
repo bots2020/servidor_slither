@@ -29,16 +29,6 @@ class Math {
     return ang - f_2pi * floorf(ang / f_2pi);
   }
 
-  // Quantization helpers: client protocol uses 8-bit angles (256 steps per 2*PI)
-  inline static float ang8_to_rad(uint8_t q) {
-    return (static_cast<float>(q) / 256.0f) * f_2pi;
-  }
-
-  inline static uint8_t rad_to_ang8(float ang) {
-    float a = normalize_angle(ang);
-    return static_cast<uint8_t>(fmodf(a / f_2pi * 256.0f, 256.0f));
-  }
-
   static bool intersect_segments(float p0_x, float p0_y, float p1_x, float p1_y,
                                  float p2_x, float p2_y, float p3_x, float p3_y);
 

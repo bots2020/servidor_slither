@@ -11,6 +11,7 @@
 #include "packet/p_minimap.h"
 #include "packet/p_move.h"
 #include "packet/p_pong.h"
+#include "packet/p_active_radius.h"
 #include "packet/p_prey.h"
 #include "packet/p_remove_part.h"
 #include "packet/p_rotation.h"
